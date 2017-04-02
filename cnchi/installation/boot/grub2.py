@@ -64,12 +64,14 @@ class Grub2(object):
         self.modify_grub_default()
         self.prepare_grub_d()
 
+
         if os.path.exists('/sys/firmware/efi'):
             logging.debug("Cnchi will install the Grub2 (efi) loader")
             self.install_efi()
         else:
             logging.debug("Cnchi will install the Grub2 (bios) loader")
-            self.install_bios()
+            grub_location = self.settings.get('bootloader_device')
+            self.install_bios(grub_location)
 
         self.check_root_uuid_in_grub()
 
@@ -265,11 +267,9 @@ class Grub2(object):
             call(['killall', 'grub-mount'])
             call(['killall', 'os-prober'])
 
-    def install_bios(self):
+    def install_bios(self, grub_location):
         """ Install Grub2 bootloader in a BIOS system """
-        grub_location = self.settings.get('bootloader_device')
-        txt = _("Installing GRUB(2) BIOS boot loader in {0}").format(grub_location)
-        logging.info(txt)
+        logging.info("Installing GRUB(2) BIOS boot loader in %s", grub_location)
 
         # /dev and others need to be mounted (binded).
         # We call mount_special_dirs here just to be sure
@@ -296,19 +296,14 @@ class Grub2(object):
         grub_cfg_path = os.path.join(self.dest_dir, "boot/grub/grub.cfg")
         with open(grub_cfg_path) as grub_cfg:
             if "Antergos" in grub_cfg.read():
-                txt = _("GRUB(2) BIOS has been successfully installed.")
-                logging.info(txt)
+                logging.info("GRUB(2) BIOS has been successfully installed.")
                 self.settings.set('bootloader_installation_successful', True)
             else:
-                txt = _("ERROR installing GRUB(2) BIOS.")
-                logging.warning(txt)
+                logging.warning("ERROR installing GRUB(2) BIOS.")
                 self.settings.set('bootloader_installation_successful', False)
 
     def install_efi(self):
         """ Install Grub2 bootloader in a UEFI system """
-        uefi_arch = "x86_64"
-        spec_uefi_arch = "x64"
-        spec_uefi_arch_caps = "X64"
         fpath = '/install/boot/efi/EFI/antergos_grub'
         bootloader_id = 'antergos_grub' if not os.path.exists(fpath) else \
             'antergos_grub_{0}'.format(random_generator())
@@ -322,12 +317,11 @@ class Grub2(object):
             self.settings.set('bootloader_installation_successful', False)
             return
 
-        txt = _("Installing GRUB(2) UEFI {0} boot loader").format(uefi_arch)
-        logging.info(txt)
+        logging.info("Installing GRUB(2) UEFI x86_64 boot loader")
 
         grub_install = [
             'grub-install',
-            '--target={0}-efi'.format(uefi_arch),
+            '--target=x86_64-efi',
             '--efi-directory=/install/boot/efi',
             '--bootloader-id={0}'.format(bootloader_id),
             '--boot-directory=/install/boot',
@@ -345,7 +339,7 @@ class Grub2(object):
             os.path.join(
                 self.dest_dir,
                 "boot/efi/EFI/BOOT",
-                "BOOT{0}.efi".format(spec_uefi_arch_caps)),
+                "BOOTX64.efi",
             os.path.join(
                 self.dest_dir,
                 "boot/efi/EFI/Microsoft/Boot",
@@ -354,7 +348,7 @@ class Grub2(object):
         grub_path = os.path.join(
             self.dest_dir,
             "boot/efi/EFI/antergos_grub",
-            "grub{0}.efi".format(spec_uefi_arch))
+            "grubx64.efi")
 
         for grub_default in grub_defaults:
             path = grub_default.split()[0]
@@ -381,7 +375,7 @@ class Grub2(object):
             os.path.join(
                 self.dest_dir,
                 "boot/efi/EFI/{0}".format(bootloader_id),
-                "grub{0}.efi".format(spec_uefi_arch))]
+                "grubx64.efi")]
 
         exists = True
         for path in paths:
@@ -430,12 +424,14 @@ class Grub2(object):
             pass
 
 if __name__ == '__main__':
+    # Test for this module
     os.makedirs("/install/etc/default", mode=0o755, exist_ok=True)
     shutil.copy2("/etc/default/grub", "/install/etc/default/grub")
     dest_dir = "/install"
     settings = {}
     settings["zfs"] = True
     settings["zfs_pool_name"] = "Antergos_d3sq"
+    settings["zfs_pool_type"] = "none"
     settings["use_luks"] = True
     uuids = {}
     uuids["/"] = "ABCD"

@@ -104,7 +104,7 @@ class InstallationZFS(GtkBaseBox):
             "encrypt_disk": False,
             "encrypt_password": "",
             "scheme": "GPT",
-            "pool_type": "None",
+            "pool_type": "none",
             "swap_size": 8192,
             "pool_name": pool_name,
             "use_pool_name": False,
@@ -112,12 +112,12 @@ class InstallationZFS(GtkBaseBox):
         }
 
         self.pool_types = {
-            0: "None",
-            1: "Stripe",
-            2: "Mirror",
-            3: "RAID-Z",
-            4: "RAID-Z2",
-            5: "RAID-Z3"
+            0: "none",
+            1: "stripe",
+            2: "mirror",
+            3: "raid-z",
+            4: "raid-z2",
+            5: "raid-z3"
         }
 
         self.schemes = {
@@ -372,22 +372,22 @@ class InstallationZFS(GtkBaseBox):
             if row[COL_USE_ACTIVE]:
                 num_drives += 1
 
-        if pool_type == "None":
+        if pool_type == "none":
             is_ok = num_drives == 1
             if not is_ok:
                 msg = _("You must select one drive")
 
-        elif pool_type in ["Stripe", "Mirror"]:
+        elif pool_type in ["stripe", "mirror"]:
             is_ok = num_drives > 1
             if not is_ok:
                 msg = _("For the {0} pool_type, you must select at least two "
                         "drives").format(pool_type)
 
-        elif "RAID" in pool_type:
+        elif "raid" in pool_type:
             pool_types = {
-                'RAID-Z': {'min_drives': 3, 'min_parity_drives': 1},
-                'RAID-Z2': {'min_drives': 4, 'min_parity_drives': 2},
-                'RAID-Z3': {'min_drives': 5, 'min_parity_drives': 3}
+                'raid-z': {'min_drives': 3, 'min_parity_drives': 1},
+                'raid-z2': {'min_drives': 4, 'min_parity_drives': 2},
+                'raid-z3': {'min_drives': 5, 'min_parity_drives': 3}
             }
 
             min_drives = pool_types[pool_type]['min_drives']
@@ -429,9 +429,9 @@ class InstallationZFS(GtkBaseBox):
     def show_pool_type_help(self, pool_type):
         """ Show pool type help to the user """
         msg = ""
-        if pool_type == "None":
+        if pool_type == "none":
             msg = _("'None' pool will use ZFS on a single selected disk.")
-        elif pool_type == "Stripe":
+        elif pool_type == "stripe":
             msg = _("When created together, with equal capacity, ZFS "
                     "space-balancing makes a span act like a RAID0 stripe. "
                     "The space is added together. Provided all the devices "
@@ -439,11 +439,11 @@ class InstallationZFS(GtkBaseBox):
                     "continue regardless of fullness level. If "
                     "devices/vdevs are not equally sized, then they will "
                     "fill mostly equally until one device/vdev is full.")
-        elif pool_type == "Mirror":
+        elif pool_type == "mirror":
             msg = _("A mirror consists of two or more devices, all data "
                     "will be written to all member devices. Cnchi will "
                     "try to group devices in groups of two.")
-        elif pool_type.startswith("RAID-Z"):
+        elif pool_type.startswith("raid-z"):
             msg = _("ZFS implements RAID-Z, a variation on standard "
                     "RAID-5. ZFS supports three levels of RAID-Z which "
                     "provide varying levels of redundancy in exchange for "
@@ -673,27 +673,8 @@ class InstallationZFS(GtkBaseBox):
 
         call(["sync"])
 
-    def run_format(self):
-        """ Create partitions and file systems """
-        # https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS
-        # https://wiki.archlinux.org/index.php/ZFS#GRUB-compatible_pool_creation
-
-        device_paths = self.zfs_options["device_paths"]
-        logging.debug("Configuring ZFS in %s", ",".join(device_paths))
-
-        # Read all preexisting zfs pools. If there's an antergos one, delete it.
-        self.do_destroy_zfs_pools()
-
-        # Wipe all disks that will be part of the installation.
-        # This cannot be undone!
-        self.init_device(device_paths[0], self.zfs_options["scheme"])
-        for device_path in device_paths[1:]:
-            self.init_device(device_path, "GPT")
-
-        device_path = device_paths[0]
+    def format_boot_disk(self, device_path):
         solaris_partition_number = -1
-
-        self.settings.set('bootloader_device', device_path)
 
         if self.zfs_options["scheme"] == "GPT":
             part_num = 1
@@ -790,6 +771,35 @@ class InstallationZFS(GtkBaseBox):
             self.devices['root'] = "{0}{1}".format(device_path, 2)
             # self.fs_devices[self.devices['root']] = "zfs"
             self.mount_devices['/'] = self.devices['root']
+        return solaris_partition_number
+
+    def run_format(self):
+        """ Create partitions and file systems """
+        # https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS
+        # https://wiki.archlinux.org/index.php/ZFS#GRUB-compatible_pool_creation
+
+        pool_type = self.zfs_options['pool_type']
+
+        device_paths = self.zfs_options['device_paths']
+        logging.debug("Configuring ZFS in %s", ",".join(device_paths))
+
+        # Read all preexisting zfs pools. If there's an antergos one, delete it.
+        self.do_destroy_zfs_pools()
+
+        # Wipe all disks that will be part of the installation. This cannot be undone!
+        self.init_device(device_paths[0], self.zfs_options["scheme"])
+        for device_path in device_paths[1:]:
+            self.init_device(device_path, "GPT")
+
+        first_device_path = device_paths[0]
+        self.settings.set('bootloader_device', first_device_path)
+
+        if pool_type == 'mirror':
+            # let's create all devices with a boot partition
+            for device_path in device_paths:
+                solaris_partition_number = self.format_boot_disk(device_path)
+        else:
+            solaris_partition_number = self.format_boot_disk(first_device_path)
 
         # Wait until /dev initialized correct devices
         call(["udevadm", "settle"])
@@ -1004,7 +1014,6 @@ class InstallationZFS(GtkBaseBox):
         cmd.extend(["-m", DEST_DIR, pool_name])
 
         pool_type = pool_type.lower().replace("-", "")
-
         if pool_type in ["none", "stripe"]:
             # Add first device
             cmd.append(device_paths[0])
@@ -1121,6 +1130,14 @@ class InstallationZFS(GtkBaseBox):
             device_paths[0],
             solaris_partition_number)
 
+        # If mirroing, all disks will have a boot partition
+        if zfs_options['pool_type'] == 'mirror':
+            tmp = device_paths
+            device_paths = []
+            for device_path in tmp:
+                device_paths.append(self.get_partition_path(device_path, solaris_partition_number))
+            tmp = []
+
         line = ", ".join(device_paths)
         logging.debug("Cnchi will create a ZFS pool using %s devices", line)
 
@@ -1141,7 +1158,7 @@ class InstallationZFS(GtkBaseBox):
                 "Pool name is invalid. It must contain only alphanumeric characters (a-zA-Z0-9_), "
                 "hyphens (-), colons (:), and/or spaces ( ). Names starting with the letter 'c' "
                 "followed by a number (c[0-9]) are not allowed. The following names are also not "
-                "allowed: 'mirror', 'raidz', 'spare', 'log'.")
+                "allowed: 'mirror', 'raidz', 'spare' and 'log'.")
             raise InstallError(txt)
 
         # Create zpool
