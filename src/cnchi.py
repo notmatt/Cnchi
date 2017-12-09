@@ -57,7 +57,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gio, Gtk, GObject
 
 import misc.extra as misc
-import show_message as show
+import ui.gtk.show_message as show
 import info
 import updater
 from logging_utils import ContextFilter

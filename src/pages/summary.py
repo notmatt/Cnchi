@@ -43,7 +43,7 @@ from installation.process import Process
 
 from misc.extra import InstallError
 
-import show_message as show
+import ui.gtk.show_message as show
 
 from misc.gtkwidgets import StateBox
 

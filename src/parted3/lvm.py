@@ -32,7 +32,7 @@
 import subprocess
 import logging
 
-import show_message as show
+import ui.gtk.show_message as show
 
 import misc.extra as misc
 

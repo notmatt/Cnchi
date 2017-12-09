@@ -34,7 +34,8 @@ import misc.extra as misc
 from misc.extra import InstallError, random_generator
 from misc.run_cmd import call
 
-import show_message as show
+import ui.gtk.show_message as show
+
 from installation import action
 from installation import install
 from installation import wrapper

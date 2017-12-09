@@ -53,7 +53,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, Atk
 
-import show_message as show
+import ui.gtk.show_message as show
 import misc.extra as misc
 
 import pages.ask

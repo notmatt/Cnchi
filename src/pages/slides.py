@@ -40,7 +40,7 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('WebKit2', '4.0')
 from gi.repository import Gtk, GLib, WebKit2
 
-import show_message as show
+import ui.gtk.show_message as show
 import misc.extra as misc
 
 from pages.gtkbasebox import GtkBaseBox

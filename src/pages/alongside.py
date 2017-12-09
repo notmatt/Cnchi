@@ -37,7 +37,7 @@ import logging
 import subprocess
 import tempfile
 
-import show_message as show
+import ui.gtk.show_message as show
 import bootinfo
 
 from pages.gtkbasebox import GtkBaseBox

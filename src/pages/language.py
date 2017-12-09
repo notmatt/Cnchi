@@ -41,7 +41,7 @@ from pages.gtkbasebox import GtkBaseBox
 
 import misc.i18n as i18n
 
-from proxy import ProxyDialog
+from ui.gtk.proxy import ProxyDialog
 
 # Useful vars for gettext (translations)
 APP_NAME = "cnchi"

@@ -33,7 +33,7 @@ import subprocess
 import os
 import logging
 
-import show_message as show
+import ui.gtk.show_message as show
 
 import parted
 

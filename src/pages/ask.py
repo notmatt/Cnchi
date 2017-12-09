@@ -149,7 +149,7 @@ class InstallationAsk(GtkBaseBox):
 
     def on_alongside_wiki_button_clicked(self, widget, data=None):
         try:
-            from browser_window import BrowserWindow
+            from ui.gtk.browser_window import BrowserWindow
             self.browser = BrowserWindow("Antergos Wiki - Dual Boot")
             url = "https://antergos.com/wiki/install/how-to-dual-boot-antergos-windows-uefi-expanded-by-linuxhat/"
             self.browser.load_url(url)

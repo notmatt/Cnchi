@@ -44,7 +44,7 @@ import misc.extra as misc
 from misc.run_cmd import call, popen
 from pages.gtkbasebox import GtkBaseBox
 
-import show_message as show
+import ui.gtk.show_message as show
 
 from misc.gtkwidgets import StateBox
 

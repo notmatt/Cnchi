@@ -34,11 +34,12 @@ import subprocess
 
 import misc.extra as misc
 import misc.keyboard_names as keyboard_names
-import widgets.keyboard_widget as keyboard_widget
 
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
+
+import ui.gtk.keyboard_widget as keyboard_widget
 
 from pages.gtkbasebox import GtkBaseBox
 

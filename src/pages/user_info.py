@@ -33,11 +33,11 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
 import misc.validation as validation
-import show_message as show
+import ui.gtk.show_message as show
 
 from pages.gtkbasebox import GtkBaseBox
 
-from widgets.webcam_widget import WebcamWidget
+from ui.gtk.webcam_widget import WebcamWidget
 
 ICON_OK = "emblem-default"
 ICON_WARNING = "dialog-warning"

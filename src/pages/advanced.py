@@ -50,7 +50,7 @@ from gi.repository import Gtk, Gdk
 from installation import install
 from installation import action
 
-import show_message as show
+import ui.gtk.show_message as show
 
 from pages.gtkbasebox import GtkBaseBox
 
