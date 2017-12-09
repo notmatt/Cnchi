@@ -534,14 +534,6 @@ def sort_list(my_list, my_locale=""):
     return sorted_list
 
 
-def gtk_refresh():
-    """ Tell Gtk loop to run pending events """
-    from gi.repository import Gtk
-
-    while Gtk.events_pending():
-        Gtk.main_iteration()
-
-
 def remove_temp_files():
     """ Remove Cnchi temporary files """
     temp_files = [
@@ -558,23 +550,6 @@ def remove_temp_files():
             # FIXME: Some of these tmp files are created with sudo privileges
             with raised_privileges() as privileged:
                 os.remove(path)
-
-
-def set_cursor(cursor_type):
-    """ Set mouse cursor """
-    try:
-        from gi.repository import Gdk
-
-        screen = Gdk.Screen.get_default()
-        window = Gdk.Screen.get_root_window(screen)
-
-        if window:
-            display = Gdk.Display.get_default()
-            cursor = Gdk.Cursor.new_for_display(display, cursor_type)
-            window.set_cursor(cursor)
-            gtk_refresh()
-    except Exception as ex:
-        logging.debug(ex)
 
 
 def partition_exists(partition):

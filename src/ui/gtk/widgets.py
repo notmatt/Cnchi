@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 #
-# gtkwidgets.py
+# widgets.py
 #
 # Copyright (c) 2012 Canonical Ltd.
 # Copyright © 2013-2017 Antergos

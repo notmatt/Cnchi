@@ -45,7 +45,7 @@ from misc.extra import InstallError
 
 import ui.gtk.show_message as show
 
-from misc.gtkwidgets import StateBox
+from ui.gtk.widgets import StateBox
 
 if __debug__:
     def _(x): return x

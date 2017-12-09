@@ -54,7 +54,7 @@ import ui.gtk.show_message as show
 
 from pages.gtkbasebox import GtkBaseBox
 
-from misc.gtkwidgets import StateBox
+from ui.gtk.widgets import StateBox
 
 COL_PATH = 0
 COL_FS = 1
@@ -2176,15 +2176,6 @@ class InstallationAdvanced(GtkBaseBox):
                         logging.debug(str(act))
 
         return changelist
-
-    @staticmethod
-    def set_cursor(cursor_type):
-        """ Sets mouse cursor in root window """
-        gdk_screen = Gdk.Screen.get_default()
-        if gdk_screen is not None:
-            gdk_window = gdk_screen.get_root_window()
-            if gdk_window is not None:
-                gdk_window.set_cursor(Gdk.Cursor(cursor_type))
 
     def store_values(self):
         """ The user clicks 'Install now!' """

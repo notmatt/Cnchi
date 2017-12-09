@@ -43,7 +43,7 @@ import bootinfo
 from pages.gtkbasebox import GtkBaseBox
 
 import misc.extra as misc
-import misc.gtkwidgets as gtkwidgets
+import ui.gtk.widgets as gtkwidgets
 
 if __debug__:
     def _(x): return x

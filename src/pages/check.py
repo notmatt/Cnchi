@@ -46,7 +46,7 @@ from pages.gtkbasebox import GtkBaseBox
 
 import ui.gtk.show_message as show
 
-from misc.gtkwidgets import StateBox
+from ui.gtk.widgets import StateBox
 
 # Constants
 NM = 'org.freedesktop.NetworkManager'
