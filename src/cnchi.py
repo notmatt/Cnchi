@@ -53,14 +53,14 @@ import gi
 import requests
 import json
 
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gio, Gtk, GObject
-
 import misc.extra as misc
-import ui.gtk.show_message as show
 import info
 import updater
 from logging_utils import ContextFilter
+
+
+import gtk.show_message as show
+
 
 try:
     from bugsnag.handlers import BugsnagHandler
@@ -78,91 +78,6 @@ cmd_line = None
 
 # At least this GTK version is needed
 GTK_VERSION_NEEDED = "3.18.0"
-
-
-class CnchiApp(Gtk.Application):
-    """ Main Cnchi App class """
-
-    def __init__(self):
-        """ Constructor. Call base class """
-        Gtk.Application.__init__(self,
-                                 application_id="com.antergos.cnchi",
-                                 flags=Gio.ApplicationFlags.FLAGS_NONE)
-        self.TMP_RUNNING = "/tmp/.setup-running"
-
-    def do_activate(self):
-        """ Override the 'activate' signal of GLib.Application. """
-        try:
-            import main_window
-        except ImportError as err:
-            msg = "Cannot create Cnchi main window: {0}".format(err)
-            logging.error(msg)
-            sys.exit(1)
-
-        # Check if we have administrative privileges
-        if os.getuid() != 0:
-            msg = _('This installer must be run with administrative privileges, '
-                    'and cannot continue without them.')
-            show.error(None, msg)
-            return
-
-        # Check if we're already running
-        if self.already_running():
-            msg = _("You cannot run two instances of this installer.\n\n"
-                    "If you are sure that the installer is not already running\n"
-                    "you can run this installer using the --force option\n"
-                    "or you can manually delete the offending file.\n\n"
-                    "Offending file: '{0}'").format(self.TMP_RUNNING)
-            show.error(None, msg)
-            return
-
-        window = main_window.MainWindow(self, cmd_line)
-        self.add_window(window)
-        window.show()
-
-        with open(self.TMP_RUNNING, "w") as tmp_file:
-            txt = "Cnchi {0}\n{1}\n".format(info.CNCHI_VERSION, os.getpid())
-            tmp_file.write(txt)
-
-        # This is unnecessary as show_all is called in MainWindow
-        # window.show_all()
-
-        # def do_startup(self):
-        # """ Override the 'startup' signal of GLib.Application. """
-        # Gtk.Application.do_startup(self)
-
-        # Application main menu (we don't need one atm)
-        # Leaving this here for future reference
-        # menu = Gio.Menu()
-        # menu.append("About", "win.about")
-        # menu.append("Quit", "app.quit")
-        # self.set_app_menu(menu)
-
-    def already_running(self):
-        """ Check if we're already running """
-        if os.path.exists(self.TMP_RUNNING):
-            logging.debug("File %s already exists.", self.TMP_RUNNING)
-            with open(self.TMP_RUNNING) as setup:
-                lines = setup.readlines()
-            if len(lines) >= 2:
-                try:
-                    pid = int(lines[1].strip('\n'))
-                except ValueError as err:
-                    logging.debug(err)
-                    logging.debug("Cannot read PID value.")
-                    return True
-            else:
-                logging.debug("Cannot read PID value.")
-                return True
-
-            if misc.check_pid(pid):
-                logging.info("Cnchi with pid '%d' already running.", pid)
-                return True
-            else:
-                # Cnchi with pid 'pid' is no longer running, we can safely
-                # remove the offending file and continue.
-                os.remove(self.TMP_RUNNING)
-        return False
 
 
 def setup_logging():
@@ -250,43 +165,6 @@ def setup_logging():
                 "Sending Cnchi logs to {0} with id '{1}'".format(log_server, myuid))
 
 
-def check_gtk_version():
-    """ Check GTK version """
-    # Check desired GTK Version
-    major_needed = int(GTK_VERSION_NEEDED.split(".")[0])
-    minor_needed = int(GTK_VERSION_NEEDED.split(".")[1])
-    micro_needed = int(GTK_VERSION_NEEDED.split(".")[2])
-
-    # Check system GTK Version
-    major = Gtk.get_major_version()
-    minor = Gtk.get_minor_version()
-    micro = Gtk.get_micro_version()
-
-    # Cnchi will be called from our liveCD that already
-    # has the latest GTK version. This is here just to
-    # help testing Cnchi in our environment.
-    wrong_gtk_version = False
-    if major_needed > major:
-        wrong_gtk_version = True
-    if major_needed == major and minor_needed > minor:
-        wrong_gtk_version = True
-    if major_needed == major and minor_needed == minor and micro_needed > micro:
-        wrong_gtk_version = True
-
-    if wrong_gtk_version:
-        text = "Detected GTK version {0}.{1}.{2} but version >= {3} is needed."
-        text = text.format(major, minor, micro, GTK_VERSION_NEEDED)
-        try:
-            import show_message as show
-            show.error(None, text)
-        except ImportError as import_error:
-            logging.error(import_error)
-        finally:
-            return False
-    else:
-        logging.info("Using GTK v{0}.{1}.{2}".format(major, minor, micro))
-
-    return True
 
 
 def check_pyalpm_version():
@@ -405,59 +283,6 @@ def parse_options():
         action="store_true")
 
     return parser.parse_args()
-
-
-def threads_init():
-    """
-    For applications that wish to use Python threads to interact with the GNOME platform,
-    GObject.threads_init() must be called prior to running or creating threads and starting
-    main loops (see notes below for PyGObject 3.10 and greater). Generally, this should be done
-    in the first stages of an applications main entry point or right after importing GObject.
-    For multi-threaded GUI applications Gdk.threads_init() must also be called prior to running
-    Gtk.main() or Gio/Gtk.Application.run().
-    """
-    minor = Gtk.get_minor_version()
-    micro = Gtk.get_micro_version()
-
-    if minor == 10 and micro < 2:
-        # Unfortunately these versions of PyGObject suffer a bug
-        # which require a workaround to get threading working properly.
-        # Workaround: Force GIL creation
-        import threading
-        threading.Thread(target=lambda: None).start()
-
-    # Since version 3.10.2, calling threads_init is no longer needed.
-    # See: https://wiki.gnome.org/PyGObject/Threading
-    if minor < 10 or (minor == 10 and micro < 2):
-        GObject.threads_init()
-        # Gdk.threads_init()
-
-
-def update_cnchi():
-    """ Runs updater function to update cnchi to the latest version if necessary """
-    upd = updater.Updater(
-        force_update=cmd_line.update,
-        local_cnchi_version=info.CNCHI_VERSION)
-
-    if upd.update():
-        logging.info("Program updated! Restarting...")
-        misc.remove_temp_files()
-        if cmd_line.update:
-            # Remove -u and --update options from new call
-            new_argv = []
-            for argv in sys.argv:
-                if argv != "-u" and argv != "--update":
-                    new_argv.append(argv)
-        else:
-            new_argv = sys.argv
-
-        # Do not try to update again now
-        new_argv.append("--disable-update")
-
-        # Run another instance of Cnchi (which will be the new version)
-        with misc.raised_privileges() as __:
-            os.execl(sys.executable, *([sys.executable] + new_argv))
-        sys.exit(0)
 
 
 def setup_gettext():

@@ -33,17 +33,6 @@ import os
 import sys
 import shutil
 
-CNCHI_PATH = "/usr/share/cnchi"
-sys.path.append(CNCHI_PATH)
-sys.path.append(os.path.join(CNCHI_PATH, "src"))
-sys.path.append(os.path.join(CNCHI_PATH, "src/download"))
-sys.path.append(os.path.join(CNCHI_PATH, "src/hardware"))
-sys.path.append(os.path.join(CNCHI_PATH, "src/installation"))
-sys.path.append(os.path.join(CNCHI_PATH, "src/misc"))
-sys.path.append(os.path.join(CNCHI_PATH, "src/pacman"))
-sys.path.append(os.path.join(CNCHI_PATH, "src/pages"))
-sys.path.append(os.path.join(CNCHI_PATH, "src/parted3"))
-
 import logging
 import logging.handlers
 import gettext
@@ -56,8 +45,8 @@ import json
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gio, Gtk, GObject
 
-import misc.extra as misc
-import ui.gtk.show_message as show
+import gtk.show_message_gtk
+
 import info
 import updater
 from logging_utils import ContextFilter
@@ -103,7 +92,7 @@ class CnchiApp(Gtk.Application):
         if os.getuid() != 0:
             msg = _('This installer must be run with administrative privileges, '
                     'and cannot continue without them.')
-            show.error(None, msg)
+            show_message_gtk.error(None, msg)
             return
 
         # Check if we're already running
@@ -113,7 +102,7 @@ class CnchiApp(Gtk.Application):
                     "you can run this installer using the --force option\n"
                     "or you can manually delete the offending file.\n\n"
                     "Offending file: '{0}'").format(self.TMP_RUNNING)
-            show.error(None, msg)
+            show_message_gtk.error(None, msg)
             return
 
         window = main_window.MainWindow(self, cmd_line)
@@ -164,248 +153,42 @@ class CnchiApp(Gtk.Application):
                 os.remove(self.TMP_RUNNING)
         return False
 
+    def check_gtk_version(self):
+        """ Check GTK version """
+        # Check desired GTK Version
+        major_needed = int(GTK_VERSION_NEEDED.split(".")[0])
+        minor_needed = int(GTK_VERSION_NEEDED.split(".")[1])
+        micro_needed = int(GTK_VERSION_NEEDED.split(".")[2])
 
-def setup_logging():
-    """ Configure our logger """
-    logger = logging.getLogger()
+        # Check system GTK Version
+        major = Gtk.get_major_version()
+        minor = Gtk.get_minor_version()
+        micro = Gtk.get_micro_version()
 
-    logger.handlers = []
+        # Cnchi will be called from our liveCD that already
+        # has the latest GTK version. This is here just to
+        # help testing Cnchi in our environment.
+        wrong_gtk_version = False
+        if major_needed > major:
+            wrong_gtk_version = True
+        if major_needed == major and minor_needed > minor:
+            wrong_gtk_version = True
+        if major_needed == major and minor_needed == minor and micro_needed > micro:
+            wrong_gtk_version = True
 
-    if cmd_line.debug:
-        log_level = logging.DEBUG
-    else:
-        log_level = logging.INFO
-
-    logger.setLevel(log_level)
-
-    context_filter = ContextFilter()
-    logger.addFilter(context_filter.filter)
-
-    # Log format
-    formatter = logging.Formatter(
-        fmt="%(asctime)s [%(levelname)s] %(filename)s(%(lineno)d) %(funcName)s(): %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S")
-
-    # File logger
-    try:
-        file_handler = logging.FileHandler('/tmp/cnchi.log', mode='w')
-        file_handler.setLevel(log_level)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-    except PermissionError as permission_error:
-        print("Can't open /tmp/cnchi.log : ", permission_error)
-
-    # Stdout logger
-    if cmd_line.verbose:
-        # Show log messages to stdout
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(log_level)
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
-
-    if cmd_line.log_server:
-        log_server = cmd_line.log_server
-
-        if log_server == 'bugsnag':
-            if not BUGSNAG_ERROR:
-                # Bugsnag logger
-                bugsnag_api = context_filter.api_key
-                if bugsnag_api is not None:
-                    bugsnag.configure(
-                        api_key=bugsnag_api,
-                        app_version=info.CNCHI_VERSION,
-                        project_root='/usr/share/cnchi/cnchi',
-                        release_stage=info.CNCHI_RELEASE_STAGE)
-                    bugsnag_handler = BugsnagHandler(api_key=bugsnag_api)
-                    bugsnag_handler.setLevel(logging.WARNING)
-                    bugsnag_handler.setFormatter(formatter)
-                    bugsnag_handler.addFilter(context_filter.filter)
-                    bugsnag.before_notify(
-                        context_filter.bugsnag_before_notify_callback)
-                    logger.addHandler(bugsnag_handler)
-                    logging.info(
-                        "Sending Cnchi log messages to bugsnag server (using python-bugsnag).")
-                else:
-                    logging.warning(
-                        "Cannot read the bugsnag api key, logging to bugsnag is not possible.")
-            else:
-                logging.warning(BUGSNAG_ERROR)
+        if wrong_gtk_version:
+            text = "Detected GTK version {0}.{1}.{2} but version >= {3} is needed."
+            text = text.format(major, minor, micro, GTK_VERSION_NEEDED)
+            try:
+                show_message_gtk.error(None, text)
+            except ImportError as import_error:
+                logging.error(import_error)
+            finally:
+                return False
         else:
-            # Socket logger
-            socket_handler = logging.handlers.SocketHandler(
-                log_server,
-                logging.handlers.DEFAULT_TCP_LOGGING_PORT)
-            socket_formatter = logging.Formatter(formatter)
-            socket_handler.setFormatter(socket_formatter)
-            logger.addHandler(socket_handler)
+            logging.info("Using GTK v{0}.{1}.{2}".format(major, minor, micro))
 
-            # Also add uuid filter to requests logs
-            logger_requests = logging.getLogger(
-                "requests.packages.urllib3.connectionpool")
-            logger_requests.addFilter(context_filter.filter)
-
-            uid = str(uuid.uuid1()).split("-")
-            myuid = uid[3] + "-" + uid[1] + "-" + uid[2] + "-" + uid[4]
-            logging.info(
-                "Sending Cnchi logs to {0} with id '{1}'".format(log_server, myuid))
-
-
-def check_gtk_version():
-    """ Check GTK version """
-    # Check desired GTK Version
-    major_needed = int(GTK_VERSION_NEEDED.split(".")[0])
-    minor_needed = int(GTK_VERSION_NEEDED.split(".")[1])
-    micro_needed = int(GTK_VERSION_NEEDED.split(".")[2])
-
-    # Check system GTK Version
-    major = Gtk.get_major_version()
-    minor = Gtk.get_minor_version()
-    micro = Gtk.get_micro_version()
-
-    # Cnchi will be called from our liveCD that already
-    # has the latest GTK version. This is here just to
-    # help testing Cnchi in our environment.
-    wrong_gtk_version = False
-    if major_needed > major:
-        wrong_gtk_version = True
-    if major_needed == major and minor_needed > minor:
-        wrong_gtk_version = True
-    if major_needed == major and minor_needed == minor and micro_needed > micro:
-        wrong_gtk_version = True
-
-    if wrong_gtk_version:
-        text = "Detected GTK version {0}.{1}.{2} but version >= {3} is needed."
-        text = text.format(major, minor, micro, GTK_VERSION_NEEDED)
-        try:
-            import show_message as show
-            show.error(None, text)
-        except ImportError as import_error:
-            logging.error(import_error)
-        finally:
-            return False
-    else:
-        logging.info("Using GTK v{0}.{1}.{2}".format(major, minor, micro))
-
-    return True
-
-
-def check_pyalpm_version():
-    """ Checks python alpm binding and alpm library versions """
-    try:
-        import pyalpm
-
-        txt = "Using pyalpm v{0} as interface to libalpm v{1}"
-        txt = txt.format(pyalpm.version(), pyalpm.alpmversion())
-        logging.info(txt)
-    except (NameError, ImportError) as err:
-        try:
-            import show_message as show
-            show.error(None, err)
-        except ImportError as import_error:
-            logging.error(import_error)
-        finally:
-            logging.error(err)
-            return False
-
-    return True
-
-
-def check_iso_version():
-    """ Hostname contains the ISO version """
-    from socket import gethostname
-    hostname = gethostname()
-    # antergos-year.month-iso
-    prefix = "ant-"
-    suffix = "-min"
-    if hostname.startswith(prefix) or hostname.endswith(suffix):
-        # We're running form the ISO, register which version.
-        if suffix in hostname:
-            version = hostname[len(prefix):-len(suffix)]
-        else:
-            version = hostname[len(prefix):]
-        logging.debug("Running from ISO version %s", version)
-        # Delete user's chromium cache (just in case)
-        cache_dir = "/home/antergos/.cache/chromium"
-        if os.path.exists(cache_dir):
-            shutil.rmtree(path=cache_dir, ignore_errors=True)
-            logging.debug("User's chromium cache deleted")
-        # If we're running from sonar iso force a11y parameter to true
-        if hostname.endswith("sonar"):
-            cmd_line.a11y = True
-    else:
-        logging.debug("Not running from ISO")
-    return True
-
-
-def parse_options():
-    """ argparse http://docs.python.org/3/howto/argparse.html """
-
-    import argparse
-
-    desc = _("Cnchi v{0} - Antergos Installer").format(info.CNCHI_VERSION)
-    parser = argparse.ArgumentParser(description=desc)
-
-    parser.add_argument(
-        "-a", "--a11y",
-        help=_("Set accessibility feature on by default"),
-        action="store_true")
-    parser.add_argument(
-        "-c", "--cache",
-        help=_("Use pre-downloaded xz packages when possible"),
-        nargs='?')
-    parser.add_argument(
-        "-d", "--debug",
-        help=_("Sets Cnchi log level to 'debug'"),
-        action="store_true")
-    parser.add_argument(
-        "-e", "--environment",
-        help=_("Sets the Desktop Environment that will be installed"),
-        nargs='?')
-    parser.add_argument(
-        "-f", "--force",
-        help=_("Runs cnchi even if it detects that another instance is running"),
-        action="store_true")
-    parser.add_argument(
-        "-i", "--disable-tryit",
-        help=_("Disables first screen's 'try it' option"),
-        action="store_true")
-    parser.add_argument(
-        "-n", "--no-check",
-        help=_("Makes checks optional in check screen"),
-        action="store_true")
-    parser.add_argument(
-        "-p", "--packagelist",
-        help=_(
-            "Install the packages referenced by a local xml instead of the default ones"),
-        nargs='?')
-    parser.add_argument(
-        "-s", "--log-server",
-        help=_("Choose to which log server send Cnchi logs."
-               " Expects a hostname or an IP address"),
-        nargs='?')
-    parser.add_argument(
-        "-u", "--update",
-        help=_("Upgrade/downgrade Cnchi to the web version"),
-        action="store_true")
-    parser.add_argument(
-        "--disable-update",
-        help=_("Do not search for new Cnchi versions online"),
-        action="store_true")
-    parser.add_argument(
-        "-v", "--verbose",
-        help=_("Show logging messages to stdout"),
-        action="store_true")
-    parser.add_argument(
-        "-V", "--version",
-        help=_("Show Cnchi version and quit"),
-        action="store_true")
-    parser.add_argument(
-        "-z", "--z_hidden",
-        help=_("Show options in development (for developers only, do not use this!)"),
-        action="store_true")
-
-    return parser.parse_args()
-
+        return True
 
 def threads_init():
     """
@@ -432,59 +215,6 @@ def threads_init():
         GObject.threads_init()
         # Gdk.threads_init()
 
-
-def update_cnchi():
-    """ Runs updater function to update cnchi to the latest version if necessary """
-    upd = updater.Updater(
-        force_update=cmd_line.update,
-        local_cnchi_version=info.CNCHI_VERSION)
-
-    if upd.update():
-        logging.info("Program updated! Restarting...")
-        misc.remove_temp_files()
-        if cmd_line.update:
-            # Remove -u and --update options from new call
-            new_argv = []
-            for argv in sys.argv:
-                if argv != "-u" and argv != "--update":
-                    new_argv.append(argv)
-        else:
-            new_argv = sys.argv
-
-        # Do not try to update again now
-        new_argv.append("--disable-update")
-
-        # Run another instance of Cnchi (which will be the new version)
-        with misc.raised_privileges() as __:
-            os.execl(sys.executable, *([sys.executable] + new_argv))
-        sys.exit(0)
-
-
-def setup_gettext():
-    """ This allows to translate all py texts (not the glade ones) """
-
-    gettext.textdomain(APP_NAME)
-    gettext.bindtextdomain(APP_NAME, LOCALE_DIR)
-
-    locale_code, encoding = locale.getdefaultlocale()
-    lang = gettext.translation(APP_NAME, LOCALE_DIR, [locale_code], None, True)
-    lang.install()
-
-
-def check_for_files():
-    """ Check for some necessary files. Cnchi can't run without them """
-    paths = [
-        "/usr/share/cnchi",
-        "/usr/share/cnchi/ui",
-        "/usr/share/cnchi/data",
-        "/usr/share/cnchi/data/locale"]
-
-    for path in paths:
-        if not os.path.exists(path):
-            print(_("Cnchi files not found. Please, install Cnchi using pacman"))
-            return False
-
-    return True
 
 
 def init_cnchi():
