@@ -80,26 +80,6 @@ LIBS = {
     'qt': ["kde", "lxqt"]
 }
 
-ALL_FEATURES = ["a11y", "aur", "bluetooth", "cups", "chromium", "firefox", "firewall", "flash",
-                "games", "graphic_drivers", "lamp", "lts", "office", "sshd", "visual", "vivaldi"]
-
-# Not all desktops have all features
-EXCLUDED_FEATURES = {
-    'base': ["bluetooth", "chromium", "firefox", "firewall", "flash", "games",
-             "graphic_drivers", "office", "visual", "vivaldi"],
-    'cinnamon': ["lamp", "visual"],
-    'deepin': ["lamp", "visual"],
-    'gnome': ["lamp", "visual"],
-    'kde': ["lamp", "visual"],
-    'mate': ["lamp", "visual"],
-    'openbox': ["lamp"],
-    'xfce': ["lamp", "visual"],
-    'budgie': ["lamp", "visual"],
-    'enlightenment': ["lamp", "visual"],
-    'i3': ["lamp"],
-    'lxqt': ["lamp", "visual"]
-}
-
 # Session names for lightDM setup (/usr/share/xsessions)
 SESSIONS = {
     'cinnamon': 'cinnamon',
