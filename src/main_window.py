@@ -147,7 +147,7 @@ class MainWindow(Gtk.ApplicationWindow):
                     my_desktop)
 
         self.ui = Gtk.Builder()
-        path = os.path.join(self.ui_dir, "cnchi.ui")
+        path = os.path.join(self.ui_dir, "cnchi.xml")
         self.ui.add_from_file(path)
 
         main = self.ui.get_object("main")
@@ -155,7 +155,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.add(main)
 
         self.header_ui = Gtk.Builder()
-        path = os.path.join(self.ui_dir, "header.ui")
+        path = os.path.join(self.ui_dir, "header.xml")
         self.header_ui.add_from_file(path)
         self.header = self.header_ui.get_object("header")
 
@@ -316,7 +316,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.set_focus(None)
 
-        misc.gtk_refresh()
+        #misc.gtk_refresh()
 
     def header_for_all_callback(self, widget, data):
         if isinstance(widget, Gtk.Box):

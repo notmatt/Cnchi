@@ -149,7 +149,7 @@ class Welcome(GtkBaseBox):
             txt = ""
         self.labels['loading'].set_markup(txt)
         self.labels['loading'].queue_draw()
-        misc.gtk_refresh()
+        #misc.gtk_refresh()
 
     def store_values(self):
         self.forward_button.show()
