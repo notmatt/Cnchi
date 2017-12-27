@@ -1,3 +1,5 @@
+[2017-12-27 10:45:49 +0100]  Modify folder in hardware module. This is a workaround, still needs..      karasu      {ed45d9eb}
+[2017-12-24 18:30:46 +0100]  Fix use force when creating f2fs                                           karasu      {af45451d}
 [2017-12-24 15:24:45 +0100]  Add force option to mkfs.f2fs                                              karasu      {fcdc3103}
 [2017-12-14 20:51:11 +0100]  Start working on cnchi                                                     karasu      {d8a2d06f}
 [2017-12-14 19:44:38 +0100]  Moving files                                                               karasu      {0d8c4a47}
